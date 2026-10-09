@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ChatPanel from './ChatPanel';
 
 /**
  * Filter and prioritize items that involve the user's name:
@@ -148,6 +149,24 @@ export default function AnalysisDashboard({ analysis, error, userName = '', sour
 
   const missedItems = extractUserMissedItems(analysis, userName);
 
+  // Extract or fallback conversation messages array
+  const conversationMessages = Array.isArray(analysis.messages) && analysis.messages.length > 0
+    ? analysis.messages
+    : [
+        ...(analysis.decisions || []).map((d, i) => ({
+          id: `msg-${i + 1}`,
+          sender: d.sender || 'Unknown',
+          timestamp: d.timestamp || '',
+          text: d.sourceMessage?.text || d.text
+        })),
+        ...(analysis.actionItems || []).map((a, i) => ({
+          id: `msg-act-${i + 1}`,
+          sender: a.sender || 'Unknown',
+          timestamp: a.timestamp || '',
+          text: a.sourceMessage?.text || a.task
+        }))
+      ];
+
   // Toggle accordion expand in What I Missed
   const toggleMissedExpand = (id) => {
     setExpandedMissedIds((prev) => ({
@@ -268,6 +287,15 @@ export default function AnalysisDashboard({ analysis, error, userName = '', sour
             </p>
             <span className="hub-card-link">View Decisions →</span>
           </div>
+        </div>
+
+        {/* Ask Your Chat AI Chatbot Section */}
+        <div className="hub-chat-section margin-top">
+          <ChatPanel
+            messages={conversationMessages}
+            initialUseGemini={isGemini}
+            fallbackReason={fallbackReason}
+          />
         </div>
       </div>
     );

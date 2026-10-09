@@ -47,3 +47,31 @@ export async function analyzeChatLogAI(chatLog, filename = '', userName = '') {
     fallbackReason: data.fallbackReason || null
   };
 }
+
+/**
+ * Ask a question about chat messages using Gemini AI or local keyword search fallback.
+ * Returns { answer, sources, source, fallbackReason? }.
+ */
+export async function askChatQuestion(messages, question, history = [], forceLocal = false) {
+  const response = await fetch(`${API_BASE}/api/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ messages, question, history, forceLocal })
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || !data.success) {
+    throw new Error(data.error || `Server error: ${response.status}`);
+  }
+
+  return {
+    answer: data.answer,
+    sources: data.sources || [],
+    source: data.source || 'local',
+    fallbackReason: data.fallbackReason || null
+  };
+}
+

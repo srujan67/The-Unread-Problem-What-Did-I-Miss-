@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { parseChatLog } from '../services/chatParser.js';
 import { analyzeChat } from '../services/localAnalysis.js';
 import { analyzeWithGemini } from '../services/aiAnalysis.js';
+import { askChat } from '../services/chatService.js';
 
 const router = Router();
 
@@ -104,6 +105,50 @@ router.post('/analyze-ai', async (req, res) => {
   latestId = id;
 
   return res.status(200).json(responseData);
+});
+
+/**
+ * POST /api/chat
+ * Ask questions about conversation messages backed by Gemini AI with local keyword search fallback.
+ */
+router.post('/chat', async (req, res) => {
+  const { messages, question, history = [], forceLocal = false } = req.body || {};
+
+  if (!question || typeof question !== 'string' || !question.trim()) {
+    return res.status(400).json({
+      success: false,
+      error: 'Question is required and must be a non-empty string.'
+    });
+  }
+
+  if (!Array.isArray(messages)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Messages must be provided as an array.'
+    });
+  }
+
+  try {
+    const result = await askChat({
+      messages,
+      question: question.trim(),
+      history,
+      forceLocal: Boolean(forceLocal)
+    });
+
+    return res.status(200).json({
+      success: true,
+      answer: result.answer,
+      sources: result.sources || [],
+      source: result.source || 'local',
+      ...(result.fallbackReason ? { fallbackReason: result.fallbackReason } : {})
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: `Chat request failed: ${err.message}`
+    });
+  }
 });
 
 /**

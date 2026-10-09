@@ -147,5 +147,57 @@ This document outlines the API endpoints and contracts for ProtocolX.
   }
   ```
 
+## Chat Q&A ("Ask Your Chat")
+
+- **Endpoint**: `POST /api/chat`
+- **Description**: Answers questions strictly based on the provided conversation messages as context using Gemini AI. Enforces a 15-second timeout, JSON schema response `{ answer, sources }`, validates source IDs against input messages, and gracefully falls back to local keyword search when Gemini fails or is disabled.
+- **Request Body**:
+  ```json
+  {
+    "messages": [
+      {
+        "id": "msg-1",
+        "sender": "Taylor Reed",
+        "timestamp": "2026-10-09T09:12:00Z",
+        "text": "DECISION: We agreed to use PostgreSQL for structured persistence."
+      }
+    ],
+    "question": "What database was selected?",
+    "history": [
+      { "role": "user", "text": "Who made the database decision?" },
+      { "role": "assistant", "text": "Taylor Reed stated the decision." }
+    ],
+    "forceLocal": false
+  }
+  ```
+- **Response**:
+  - `200 OK` (Gemini Response)
+  ```json
+  {
+    "success": true,
+    "answer": "PostgreSQL was selected for structured persistence.",
+    "sources": ["msg-1"],
+    "source": "gemini"
+  }
+  ```
+  - `200 OK` (Local Keyword Search Fallback)
+  ```json
+  {
+    "success": true,
+    "answer": "AI is unavailable. Here are the most relevant messages:",
+    "sources": ["msg-1"],
+    "source": "local",
+    "fallbackReason": "Configured Gemini model (gemini-2.5-flash) not found or retired."
+  }
+  ```
+  - `400 Bad Request`
+  ```json
+  {
+    "success": false,
+    "error": "Question is required and must be a non-empty string."
+  }
+  ```
+
+
 
 

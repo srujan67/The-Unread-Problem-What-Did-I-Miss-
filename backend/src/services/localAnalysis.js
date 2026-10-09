@@ -348,6 +348,12 @@ export function analyzeChat(parsedResult, userName = '') {
       actionItems,
       urgentHighlights,
       mentions: mentionsList,
+      messages: messages.map((m, idx) => ({
+        id: m.id || `msg-${idx + 1}`,
+        sender: m.sender || 'Unknown',
+        timestamp: m.timestamp || null,
+        text: m.text || ''
+      })),
       userRelevanceScore,
       privacyNotice: 'Processed 100% locally. Zero conversation data or metadata leaves your server or device.'
     }

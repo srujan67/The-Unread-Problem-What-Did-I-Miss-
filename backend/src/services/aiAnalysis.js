@@ -163,6 +163,7 @@ STRICT INSTRUCTIONS:
       actionItems: Array.isArray(parsedJson.actionItems) ? parsedJson.actionItems : localResult.analysis.actionItems,
       urgentHighlights: Array.isArray(parsedJson.urgentHighlights) ? parsedJson.urgentHighlights : localResult.analysis.urgentHighlights,
       mentions: Array.isArray(parsedJson.mentions) ? parsedJson.mentions : localResult.analysis.mentions,
+      messages: localResult.analysis.messages,
       source: 'gemini',
       privacyNotice: 'Analyzed with Google Gemini AI. Content was transmitted externally to Gemini API.'
     };
