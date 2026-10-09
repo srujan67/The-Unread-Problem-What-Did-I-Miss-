@@ -185,6 +185,17 @@ Prompts governing AI integration, privacy disclosure, and dashboard UX architect
 - **Outcome**: Implemented `POST /api/chat`, local keyword search fallback, ChatPanel with suggested question chips, source ID validation, clickable source citation preview drawer, and transcript highlighter.
 - **Verification status**: Verified
 
+### Entry 15: Chatbot Panel Refinements & Layout Polish
+- **Prompt**: `Small fixes to the chatbot panel only. Don't touch other files.
+1. In the local keyword fallback, if no message scores above zero, answer "I couldn't find messages matching that" with no source chips. Don't return arbitrary messages.
+2. When Cloud AI was on but the response fell back to local, change the badge from "Local" to "Local (Gemini unavailable)" and drop the lock icon for that case.
+3. CSS: make the question input flex-grow to fill the row, and make the Send button fixed-width at the right.`
+- **AI tool and model**: Antigravity IDE (Gemini 3.8 Flash)
+- **Purpose**: Refine chatbot fallback handling for zero-score queries, update cloud fallback badge label and icon, and format input form layout.
+- **Files affected**: `backend/src/services/chatService.js`, `frontend/src/components/ChatPanel.jsx`, `frontend/src/index.css`, `prompt.md`
+- **Outcome**: `localKeywordSearch` returns "I couldn't find messages matching that" without arbitrary sources when no message scores above zero; badge displays "Local (Gemini unavailable)" without lock icon when falling back; input uses `flex-grow: 1` and Send button is fixed-width (105px).
+- **Verification status**: Verified
+
 ---
 
 ## 6. Testing & Improvements

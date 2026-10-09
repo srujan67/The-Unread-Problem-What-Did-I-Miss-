@@ -29,7 +29,7 @@ const STOP_WORDS = new Set([
 export function localKeywordSearch(messages, question) {
   if (!Array.isArray(messages) || messages.length === 0) {
     return {
-      answer: "I couldn't find that in this chat.",
+      answer: "I couldn't find messages matching that",
       sources: [],
       source: 'local'
     };
@@ -43,12 +43,9 @@ export function localKeywordSearch(messages, question) {
     .filter(w => w.length > 2 && !STOP_WORDS.has(w));
 
   if (words.length === 0) {
-    // If no meaningful keywords, pick top 3 messages
-    const topMsgs = messages.slice(0, 3);
-    const sources = topMsgs.map(m => m.id).filter(Boolean);
     return {
-      answer: "AI is unavailable. Here are the most relevant messages:",
-      sources,
+      answer: "I couldn't find messages matching that",
+      sources: [],
       source: 'local'
     };
   }
@@ -71,7 +68,7 @@ export function localKeywordSearch(messages, question) {
 
   if (matches.length === 0) {
     return {
-      answer: "I couldn't find that in this chat.",
+      answer: "I couldn't find messages matching that",
       sources: [],
       source: 'local'
     };

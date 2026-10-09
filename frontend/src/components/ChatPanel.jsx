@@ -70,12 +70,15 @@ export default function ChatPanel({
       // If user toggled Gemini off, force local keyword search
       const result = await askChatQuestion(messages, q, historyTurns, !useGemini);
 
+      const isCloudFallback = Boolean(useGemini && (result.source === 'local' || result.fallbackReason));
+
       const assistantTurn = {
         role: 'assistant',
         text: result.answer,
         sources: result.sources || [],
         source: result.source || (useGemini ? 'gemini' : 'local'),
         fallbackReason: result.fallbackReason || null,
+        isFallback: isCloudFallback,
         timestamp: new Date().toLocaleTimeString()
       };
 
@@ -206,8 +209,20 @@ export default function ChatPanel({
                     {turn.role === 'user' ? 'You' : 'ProtocolX Assistant'}
                   </span>
                   {turn.role === 'assistant' && (
-                    <span className={`source-badge source-badge-sm ${turn.source === 'gemini' ? 'source-badge-gemini' : 'source-badge-local'}`}>
-                      {turn.source === 'gemini' ? '✨ Gemini' : '🔒 Local'}
+                    <span
+                      className={`source-badge source-badge-sm ${
+                        turn.source === 'gemini'
+                          ? 'source-badge-gemini'
+                          : turn.isFallback || Boolean(turn.fallbackReason)
+                          ? 'source-badge-fallback'
+                          : 'source-badge-local'
+                      }`}
+                    >
+                      {turn.source === 'gemini'
+                        ? '✨ Gemini'
+                        : turn.isFallback || Boolean(turn.fallbackReason)
+                        ? 'Local (Gemini unavailable)'
+                        : '🔒 Local'}
                     </span>
                   )}
                   <span className="chat-bubble-time">{turn.timestamp}</span>

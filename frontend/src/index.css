@@ -1196,6 +1196,12 @@ body {
   animation: gemini-glow 2.5s infinite ease-in-out;
 }
 
+.source-badge-fallback {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
 @keyframes gemini-glow {
   0% { box-shadow: 0 0 4px rgba(139, 92, 246, 0.2); }
   50% { box-shadow: 0 0 12px rgba(139, 92, 246, 0.45); }
@@ -1800,11 +1806,16 @@ body {
 .chat-input-form {
   margin-top: 1rem;
   display: flex;
+  width: 100%;
   gap: 0.6rem;
+  align-items: center;
 }
 
 .chat-input {
-  flex: 1;
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: 0%;
+  min-width: 0;
   background: var(--bg-secondary);
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-md);
@@ -1821,10 +1832,19 @@ body {
 }
 
 .chat-send-btn {
-  padding: 0.75rem 1.4rem;
+  flex-grow: 0;
+  flex-shrink: 0;
+  width: 105px;
+  min-width: 105px;
+  max-width: 105px;
+  padding: 0.75rem 0.5rem;
   font-size: 0.9rem;
   font-weight: 600;
   white-space: nowrap;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
 }
 
 .chat-error-alert {
