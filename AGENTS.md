@@ -13,4 +13,5 @@ Follow these core rules when contributing to this project:
 - **Ask before adding any new dependency**: Request explicit approval before installing or introducing external libraries.
 - **Keep docs/api.md updated whenever endpoints change.**
 - **Stack: React (Vite) frontend, Node/Express backend. Don't introduce other frameworks without asking.**
+- **Record AI interactions**: After every significant AI interaction, append an entry to `prompt.md` in the required format (Prompt, AI tool and model, Purpose, Files affected, Outcome, Verification status).
 

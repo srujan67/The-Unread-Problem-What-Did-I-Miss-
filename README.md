@@ -30,7 +30,7 @@ npm run dev
 
 ## AI Usage
 
-*(Document how AI tools and assistants were leveraged during development)*
+All AI-assisted development prompts, workflows, debugging notes, and verification statuses are documented in [prompt.md](prompt.md).
 
 ## Limitations
 
