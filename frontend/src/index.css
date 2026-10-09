@@ -310,6 +310,7 @@ body {
 .badge-action { background: rgba(234, 179, 8, 0.2); color: #fde047; border: 1px solid #eab308; }
 .badge-mention { background: rgba(56, 189, 248, 0.2); color: #7dd3fc; border: 1px solid #38bdf8; }
 .badge-decision { background: rgba(34, 197, 94, 0.2); color: #86efac; border: 1px solid #22c55e; }
+.badge-topic { background: rgba(129, 140, 248, 0.15); color: #c7d2fe; border: 1px solid rgba(99, 102, 241, 0.5); }
 
 .summary-text {
   line-height: 1.6;

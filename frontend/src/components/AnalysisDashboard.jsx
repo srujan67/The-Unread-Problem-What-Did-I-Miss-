@@ -161,6 +161,13 @@ export default function AnalysisDashboard({ analysis, error }) {
       <div className="card margin-top">
         <h3>📋 Executive Summary</h3>
         <p className="summary-text">{summary}</p>
+        {analysis.topics && analysis.topics.length > 0 && (
+          <div className="tags-row" style={{ marginTop: '0.75rem', flexWrap: 'wrap' }}>
+            {analysis.topics.map((t) => (
+              <span key={t} className="badge badge-topic">🏷️ {t}</span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Ranked Priority Feed */}

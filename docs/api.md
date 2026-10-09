@@ -48,6 +48,7 @@ This document outlines the API endpoints and contracts for ProtocolX.
     "success": true,
     "analysis": {
       "summary": "High-level overview of conversation topics...",
+      "topics": ["Architecture & Persistence", "Security & Authentication"],
       "format": "json",
       "totalMessages": 8,
       "participants": ["Alex Chen", "Jordan Miller", "Taylor Reed"],
