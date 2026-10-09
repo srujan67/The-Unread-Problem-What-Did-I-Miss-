@@ -250,3 +250,69 @@ body {
   font-weight: 600;
   line-height: 18px;
 }
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  color: #64748b;
+}
+.empty-icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+/* Priority Feed */
+.priority-item {
+  position: relative;
+}
+.priority-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+.priority-rank {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #818cf8;
+  min-width: 1.8rem;
+}
+.priority-score {
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-left: auto;
+}
+.priority-title {
+  display: block;
+  margin-bottom: 0.3rem;
+}
+.priority-reason {
+  font-size: 0.8rem;
+  color: #a5b4fc;
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed #334155;
+}
+.reason-label {
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+/* Priority type border accents */
+.priority-urgent { border-left-color: #ef4444; }
+.priority-action { border-left-color: #eab308; }
+.priority-mention { border-left-color: #38bdf8; }
+.priority-decision { border-left-color: #22c55e; }
+
+/* Additional badge types */
+.badge-action { background: rgba(234, 179, 8, 0.2); color: #fde047; border: 1px solid #eab308; }
+.badge-mention { background: rgba(56, 189, 248, 0.2); color: #7dd3fc; border: 1px solid #38bdf8; }
+.badge-decision { background: rgba(34, 197, 94, 0.2); color: #86efac; border: 1px solid #22c55e; }
+
+.summary-text {
+  line-height: 1.6;
+  color: #e2e8f0;
+}
+
