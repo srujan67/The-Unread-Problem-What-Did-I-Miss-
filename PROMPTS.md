@@ -21,6 +21,8 @@ Use this file to record prompts and AI interactions during development.
 - Implement chat-log parsing in backend/src/services/chatParser.js and its tests in backend/src/services/chatParser.test.js. Support WhatsApp .txt (iOS/Android multi-line), CSV, and JSON exports; normalise sender, timestamp, message text, and @mentions. Handle malformed files without crashing.
 - Create a synthetic conversation fixture in backend/src/fixtures/demoChat.json containing multiple senders, a direct @mention, an explicit decision, an assigned task, and a dated deadline.
 - Implement the conversation-analysis API in backend/src/routes/analysis.js and connect it through the backend entry point. Create backend/src/services/localAnalysis.js accepting an optional userName field.
+- Implement the chat-ingestion interface in frontend/src/components/ChatUploader.jsx and integrate it into frontend/src/App.jsx with a 'Your name' text field sent as userName.
+
 
 
 
