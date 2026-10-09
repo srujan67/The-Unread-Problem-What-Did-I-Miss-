@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { analyzeChatLog } from '../api/client';
+import { analyzeChatLog, analyzeChatLogAI } from '../api/client';
 
 export default function ChatUploader({ onAnalysisComplete, onReset, hasAnalysis = false }) {
   const [userName, setUserName] = useState('');
@@ -9,6 +9,7 @@ export default function ChatUploader({ onAnalysisComplete, onReset, hasAnalysis 
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
+  const [useGemini, setUseGemini] = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -108,11 +109,16 @@ export default function ChatUploader({ onAnalysisComplete, onReset, hasAnalysis 
     try {
       const filename = selectedFile ? selectedFile.name : 'pasted_chat.txt';
       setProgress(60);
-      const analysis = await analyzeChatLog(rawText, filename, userName);
+
+      // Call AI or local endpoint based on toggle
+      const result = useGemini
+        ? await analyzeChatLogAI(rawText, filename, userName)
+        : await analyzeChatLog(rawText, filename, userName);
+
       setProgress(100);
       setLoading(false);
       if (onAnalysisComplete) {
-        onAnalysisComplete(analysis);
+        onAnalysisComplete(result.analysis, userName, result.source, result.fallbackReason || null);
       }
     } catch (err) {
       setError(err.message || 'An error occurred during chat analysis.');
@@ -227,6 +233,37 @@ export default function ChatUploader({ onAnalysisComplete, onReset, hasAnalysis 
           />
         </div>
 
+        {/* Gemini AI Toggle */}
+        <div className="gemini-toggle-row">
+          <div className="gemini-toggle-group">
+            <button
+              type="button"
+              className={`toggle-switch ${useGemini ? 'active' : ''}`}
+              onClick={() => setUseGemini(!useGemini)}
+              role="switch"
+              aria-checked={useGemini}
+              aria-label="Enable Gemini AI analysis"
+            >
+              <span className="toggle-knob" />
+            </button>
+            <div className="gemini-toggle-text">
+              <span className="gemini-toggle-label">
+                {useGemini ? '✨ Gemini AI Analysis' : '🔒 Local Analysis'}
+              </span>
+              <span className="gemini-toggle-desc">
+                {useGemini
+                  ? 'Content will be sent to Google Gemini for enhanced analysis'
+                  : 'All processing stays on-device — no data transmitted'}
+              </span>
+            </div>
+          </div>
+          {useGemini && (
+            <div className="gemini-disclosure">
+              ⚠️ Cloud AI enabled — conversation content may be sent to Gemini.
+            </div>
+          )}
+        </div>
+
         {error && (
           <div className="alert alert-error" role="alert">
             <span className="alert-icon">⚠️</span>
@@ -238,10 +275,10 @@ export default function ChatUploader({ onAnalysisComplete, onReset, hasAnalysis 
           <button type="submit" className="btn-primary" disabled={loading}>
             {loading ? (
               <span className="btn-loading">
-                <span className="spinner"></span> Analyzing Conversation...
+                <span className="spinner"></span> {useGemini ? 'Analyzing with Gemini AI...' : 'Analyzing Conversation...'}
               </span>
             ) : (
-              '⚡ Analyze Conversation'
+              useGemini ? '✨ Analyze with Gemini AI' : '⚡ Analyze Conversation'
             )}
           </button>
         </div>

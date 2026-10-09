@@ -27,6 +27,7 @@ Use this file to record prompts and AI interactions during development.
 - Implement a privacy-status component in frontend/src/components/PrivacyIndicator.jsx and integrate it into frontend/src/App.jsx showing 'Processed locally — no data leaves your device'.
 - Validate the complete app using the test setup and docs/api.md. Verify chatParser and localAnalysis tests, API routes, upload-to-dashboard flow, malformed uploads, and empty conversations.
 - Polish the existing UI in frontend/src/App.jsx, frontend/src/components/ChatUploader.jsx, frontend/src/components/AnalysisDashboard.jsx, and frontend/src/components/PrivacyIndicator.jsx. Create a responsive productivity dashboard with clear visual hierarchy, readable task tables, and distinct urgency indicators.
+- Redesign the results view in frontend/src/App.jsx and frontend/src/components/AnalysisDashboard.jsx with collapsed uploader compact bar, 4 selectable hub cards with live counts, isolated sub-views, user-focused 'What I Missed' with filter chips and evidence click-to-expand, and sortable tasks with mark-done checkboxes.
 
 
 

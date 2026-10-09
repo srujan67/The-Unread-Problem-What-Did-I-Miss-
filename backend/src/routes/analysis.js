@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { parseChatLog } from '../services/chatParser.js';
 import { analyzeChat } from '../services/localAnalysis.js';
+import { analyzeWithGemini } from '../services/aiAnalysis.js';
 
 const router = Router();
 
@@ -10,7 +11,7 @@ let latestId = null;
 
 /**
  * POST /api/analyze
- * Accepts chatLog content, filename hint, and optional userName.
+ * Deterministic local-only chat analysis.
  */
 router.post('/analyze', (req, res) => {
   const { chatLog, filename = '', userName = '' } = req.body || {};
@@ -42,7 +43,11 @@ router.post('/analyze', (req, res) => {
   const record = {
     id,
     timestamp: new Date().toISOString(),
-    analysis: result.analysis
+    source: 'local',
+    analysis: {
+      ...result.analysis,
+      source: 'local'
+    }
   };
 
   analysesStore.set(id, record);
@@ -50,9 +55,55 @@ router.post('/analyze', (req, res) => {
 
   return res.status(200).json({
     success: true,
+    source: 'local',
+    id,
+    analysis: record.analysis
+  });
+});
+
+/**
+ * POST /api/analyze-ai
+ * Optional Gemini AI chat analysis with automatic local fallback.
+ */
+router.post('/analyze-ai', async (req, res) => {
+  const { chatLog, filename = '', userName = '' } = req.body || {};
+
+  if (!chatLog || (typeof chatLog !== 'string' && typeof chatLog !== 'object')) {
+    return res.status(400).json({
+      success: false,
+      error: 'Missing or invalid chatLog input in request body.'
+    });
+  }
+
+  const parsed = parseChatLog(chatLog, filename);
+  if (!parsed.success) {
+    return res.status(400).json({
+      success: false,
+      error: parsed.error || 'Failed to parse chat log.'
+    });
+  }
+
+  const result = await analyzeWithGemini(parsed, userName);
+  if (!result.success) {
+    return res.status(400).json({
+      success: false,
+      error: result.error || 'Failed to analyze chat log.'
+    });
+  }
+
+  const id = `analysis-ai-${Date.now()}`;
+  const responseData = {
+    success: true,
+    source: result.source,
+    ...(result.fallbackReason ? { fallbackReason: result.fallbackReason } : {}),
     id,
     analysis: result.analysis
-  });
+  };
+
+  analysesStore.set(id, responseData);
+  latestId = id;
+
+  return res.status(200).json(responseData);
 });
 
 /**

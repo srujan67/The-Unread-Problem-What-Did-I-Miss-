@@ -97,4 +97,55 @@ This document outlines the API endpoints and contracts for ProtocolX.
   }
   ```
 
+## Gemini AI Analysis (Optional)
+
+- **Endpoint**: `POST /api/analyze-ai`
+- **Description**: Optional Gemini AI analysis layer that ingests chat content, calls Gemini with a 15-second timeout and JSON response schema, and automatically falls back to deterministic local analysis if the call fails, times out, or encounters errors.
+- **Request Body**:
+  ```json
+  {
+    "chatLog": "[24/09/24, 10:15:30 AM] Alice: Hey @Bob...",
+    "filename": "demoChat.json",
+    "userName": "Bob"
+  }
+  ```
+- **Response**:
+  - `200 OK` (Gemini Success)
+  ```json
+  {
+    "success": true,
+    "source": "gemini",
+    "id": "analysis-ai-1791539000000",
+    "analysis": {
+      "summary": "...",
+      "topics": ["..."],
+      "format": "json",
+      "totalMessages": 8,
+      "participants": ["..."],
+      "decisions": [...],
+      "actionItems": [...],
+      "urgentHighlights": [...],
+      "mentions": [...],
+      "source": "gemini",
+      "privacyNotice": "Analyzed with Google Gemini AI. Content was transmitted externally to Gemini API."
+    }
+  }
+  ```
+  - `200 OK` (Fallback to Local)
+  ```json
+  {
+    "success": true,
+    "source": "local",
+    "fallbackReason": "Gemini API call timed out after 15 seconds.",
+    "id": "analysis-ai-1791539000000",
+    "analysis": {
+      "summary": "...",
+      "source": "local",
+      "fallbackReason": "Gemini API call timed out after 15 seconds.",
+      ...
+    }
+  }
+  ```
+
+
 

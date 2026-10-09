@@ -1,405 +1,592 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 /**
- * Compute a ranked priority feed from raw analysis data.
- * Each item gets a numeric score and a human-readable "reason" string
- * citing the evidence that caused its ranking.
+ * Filter and prioritize items that involve the user's name:
+ * mentions, assigned tasks, and urgent / deadline items.
  */
-function buildRankedHighlights(analysis) {
+function extractUserMissedItems(analysis, userName) {
+  const targetUser = (userName || '').trim().toLowerCase();
+  const { actionItems = [], mentions = [], urgentHighlights = [] } = analysis;
   const items = [];
-  const { urgentHighlights = [], actionItems = [], decisions = [], mentions = [] } = analysis;
 
-  // 1. Urgent highlights → highest base score
-  urgentHighlights.forEach((urg) => {
-    const reasons = [];
-    if (urg.urgency === 'high') reasons.push('Marked critical or time-sensitive');
-    if (urg.type === 'deadline') reasons.push('Contains an explicit dated deadline');
-    if (urg.reason) reasons.push(urg.reason);
-    items.push({
-      id: urg.id,
-      score: 100,
-      type: 'urgent',
-      title: urg.description,
-      sender: urg.sender,
-      timestamp: urg.timestamp,
-      reason: reasons.join(' • ') || 'Urgent keyword match',
-    });
-  });
-
-  // 2. Action items assigned to the user → high score
+  // 1. Tasks assigned to the user
   actionItems.forEach((act) => {
-    const reasons = [];
-    if (act.isAssignedToUser) {
-      reasons.push('Assigned directly to you');
-    } else {
-      reasons.push(`Assigned to ${act.owner}`);
+    const isTarget = targetUser
+      ? act.isAssignedToUser || act.owner.toLowerCase().includes(targetUser)
+      : true;
+
+    if (isTarget) {
+      const isUrgent =
+        act.task.toLowerCase().includes('urgent') ||
+        act.task.toLowerCase().includes('asap') ||
+        (act.deadline && act.deadline !== 'No explicit deadline');
+
+      items.push({
+        id: act.id,
+        type: 'task',
+        title: act.task,
+        owner: act.owner,
+        deadline: act.deadline,
+        sender: act.sender,
+        timestamp: act.timestamp,
+        isUrgent: Boolean(isUrgent),
+        isForUser: true,
+        priority: isUrgent ? 95 : 85,
+        evidence: `Task assigned to ${act.owner}${act.deadline && act.deadline !== 'No explicit deadline' ? ` with deadline: ${act.deadline}` : ''}`,
+        sourceMessage: act.sourceMessage,
+      });
     }
-    if (act.deadline && act.deadline !== 'No explicit deadline') {
-      reasons.push(`Deadline: ${act.deadline}`);
+  });
+
+  // 2. Direct @mentions targeting the user
+  mentions.forEach((men) => {
+    const isTarget = targetUser
+      ? men.isForUser || men.mentionedUser.toLowerCase().includes(targetUser)
+      : true;
+
+    if (isTarget) {
+      items.push({
+        id: men.id,
+        type: 'mention',
+        title: `@${men.mentionedUser} mentioned by ${men.sender}`,
+        text: men.text,
+        sender: men.sender,
+        timestamp: men.timestamp,
+        isUrgent: false,
+        isForUser: true,
+        priority: 75,
+        evidence: `Direct mention by ${men.sender} targeting @${men.mentionedUser}`,
+        sourceMessage: men.sourceMessage,
+      });
     }
-    const score = act.isAssignedToUser ? 95 : (act.deadline && act.deadline !== 'No explicit deadline' ? 85 : 70);
-    items.push({
-      id: act.id,
-      score,
-      type: 'action',
-      title: act.task,
-      sender: act.sender,
-      timestamp: act.timestamp,
-      reason: reasons.join(' • '),
-      meta: { owner: act.owner, deadline: act.deadline, isAssignedToUser: act.isAssignedToUser },
-    });
   });
 
-  // 3. Mentions targeting the user → medium-high score
-  mentions.filter((m) => m.isForUser).forEach((men) => {
-    items.push({
-      id: men.id,
-      score: 75,
-      type: 'mention',
-      title: `@${men.mentionedUser} mentioned by ${men.sender}`,
-      sender: men.sender,
-      timestamp: men.timestamp,
-      reason: 'You were directly @mentioned in this message',
-      meta: { text: men.text },
-    });
+  // 3. Urgent / deadline items involving user or critical blockers
+  urgentHighlights.forEach((urg) => {
+    const fullText = (urg.description || '') + ' ' + (urg.sourceMessage?.text || '');
+    const isTarget = targetUser ? fullText.toLowerCase().includes(targetUser) : true;
+
+    const alreadyAdded = items.some((i) => i.id === urg.id);
+    if (!alreadyAdded && isTarget) {
+      items.push({
+        id: urg.id,
+        type: 'urgent',
+        title: urg.description,
+        sender: urg.sender,
+        timestamp: urg.timestamp,
+        isUrgent: true,
+        isForUser: Boolean(isTarget),
+        priority: 100,
+        evidence: urg.reason || 'Flagged as urgent time-sensitive priority',
+        sourceMessage: urg.sourceMessage,
+      });
+    }
   });
 
-  // 4. Decisions → medium score
-  decisions.forEach((dec) => {
-    items.push({
-      id: dec.id,
-      score: 60,
-      type: 'decision',
-      title: dec.text,
-      sender: dec.sender,
-      timestamp: dec.timestamp,
-      reason: dec.decisionConfidence === 'explicit' ? 'Explicit team decision approved' : 'Likely agreed direction',
+  // If strict filtering returned nothing but urgent highlights exist, show them so user isn't blank
+  if (items.length === 0 && urgentHighlights.length > 0) {
+    urgentHighlights.forEach((urg) => {
+      items.push({
+        id: urg.id,
+        type: 'urgent',
+        title: urg.description,
+        sender: urg.sender,
+        timestamp: urg.timestamp,
+        isUrgent: true,
+        isForUser: false,
+        priority: 100,
+        evidence: urg.reason || 'Flagged as critical highlight',
+        sourceMessage: urg.sourceMessage,
+      });
     });
-  });
+  }
 
-  // Sort descending by score
-  items.sort((a, b) => b.score - a.score);
+  // Sort descending by priority
+  items.sort((a, b) => b.priority - a.priority);
   return items;
 }
 
-function EmptyState({ title = 'No items found', message }) {
-  return (
-    <div className="empty-state">
-      <span className="empty-icon" aria-hidden="true">📭</span>
-      <h4 className="empty-title">{title}</h4>
-      <p className="empty-message">{message}</p>
-    </div>
-  );
-}
+export default function AnalysisDashboard({ analysis, error, userName = '', source = 'local', fallbackReason = '', onReset }) {
+  // Navigation: null = Hub view (4 cards), or 'summary' | 'missed' | 'tasks' | 'decisions'
+  const [activeView, setActiveView] = useState(null);
 
-function ErrorState({ message }) {
-  return (
-    <div className="alert alert-error margin-top" role="alert">
-      <span className="alert-icon">⚠️</span>
-      <div>
-        <strong>Analysis Error</strong>
-        <p>{message}</p>
+  // "What I Missed" state: filter chips & expandable cards
+  const [missedFilter, setMissedFilter] = useState('all'); // 'all' | 'urgent' | 'for_me'
+  const [expandedMissedIds, setExpandedMissedIds] = useState({});
+
+  // "Tasks" state: sorting by deadline & client-side "mark done"
+  const [sortTasksByDeadline, setSortTasksByDeadline] = useState(false);
+  const [completedTaskIds, setCompletedTaskIds] = useState({});
+
+  const isGemini = source === 'gemini';
+
+  if (error) {
+    return (
+      <div className="alert alert-error" role="alert">
+        <span className="alert-icon">⚠️</span>
+        <div>
+          <strong>Analysis Error</strong>
+          <p>{error}</p>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
-function PriorityBadge({ type }) {
-  const map = {
-    urgent: { label: 'CRITICAL', icon: '🚨', cls: 'badge-urgent' },
-    action: { label: 'ACTION', icon: '⚡', cls: 'badge-action' },
-    mention: { label: 'MENTION', icon: '💬', cls: 'badge-mention' },
-    decision: { label: 'DECISION', icon: '✅', cls: 'badge-decision' },
-  };
-  const info = map[type] || { label: type.toUpperCase(), icon: '📌', cls: '' };
-  return (
-    <span className={`badge ${info.cls}`}>
-      <span className="badge-icon">{info.icon}</span> {info.label}
-    </span>
-  );
-}
-
-export default function AnalysisDashboard({ analysis, error, onReset }) {
-  if (error) return <ErrorState message={error} />;
   if (!analysis) return null;
 
   const {
     summary,
     format,
-    totalMessages,
+    totalMessages = 0,
     participants = [],
     decisions = [],
     actionItems = [],
     urgentHighlights = [],
-    mentions = [],
-    userRelevanceScore,
-    privacyNotice,
     topics = [],
+    privacyNotice,
   } = analysis;
 
-  const ranked = buildRankedHighlights(analysis);
-  const hasContent = ranked.length > 0;
+  const missedItems = extractUserMissedItems(analysis, userName);
 
-  return (
-    <div className="dashboard-container">
-      {/* Privacy Guarantee Banner */}
-      <div className="privacy-banner">
-        <span className="shield-icon" aria-hidden="true">🛡️</span>
-        <div className="privacy-banner-text">
-          <strong>Local-First Confidentiality Guaranteed</strong>
-          <p>{privacyNotice}</p>
-        </div>
-      </div>
+  // Toggle accordion expand in What I Missed
+  const toggleMissedExpand = (id) => {
+    setExpandedMissedIds((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
-      {/* Overview Metrics Cards */}
-      <div className="grid grid-3 metrics-grid">
-        <div className="card metric-card">
-          <div className="metric-header">
-            <span className="metric-icon">💬</span>
-            <span className="metric-title">Messages Ingested</span>
-          </div>
-          <span className="metric-value">{totalMessages}</span>
-          <span className="metric-sub">Format: {(format || 'TXT').toUpperCase()}</span>
-        </div>
+  // Toggle mark done for tasks
+  const toggleTaskDone = (id) => {
+    setCompletedTaskIds((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
-        <div className="card metric-card">
-          <div className="metric-header">
-            <span className="metric-icon">👥</span>
-            <span className="metric-title">Participants</span>
-          </div>
-          <span className="metric-value">{participants.length}</span>
-          <span className="metric-sub" title={participants.join(', ')}>
-            {participants.slice(0, 3).join(', ')}{participants.length > 3 ? ` +${participants.length - 3} more` : ''}
-          </span>
-        </div>
-
-        <div className="card metric-card">
-          <div className="metric-header">
-            <span className="metric-icon">🎯</span>
-            <span className="metric-title">Relevance Score</span>
-          </div>
-          <span className="metric-value">{userRelevanceScore}%</span>
-          <span className="metric-sub">Personalized priority match</span>
-        </div>
-      </div>
-
-      {/* Executive Summary Card */}
-      <section className="card margin-top summary-card">
-        <div className="card-header-clean">
-          <h3 className="section-title">
-            <span className="section-icon">📋</span> Executive Summary
-          </h3>
-        </div>
-        <p className="summary-text">{summary}</p>
-        {topics && topics.length > 0 && (
-          <div className="topics-row">
-            <span className="topics-label">Topics:</span>
-            {topics.map((t) => (
-              <span key={t} className="badge badge-topic">🏷️ {t}</span>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Ranked Priority Feed */}
-      <section className="card margin-top priority-card">
-        <div className="card-header-clean">
-          <div>
-            <h3 className="section-title">
-              <span className="section-icon">⚡</span> Priority Feed — What You Missed
-            </h3>
-            <p className="section-subtitle">
-              Ranked by verifiable evidence: direct mentions, approaching deadlines, and assigned deliverables.
+  // ---------------------------------------------------------------------------
+  // 1. HUB VIEW: 4 Large Selectable Cards
+  // ---------------------------------------------------------------------------
+  if (!activeView) {
+    return (
+      <div className="hub-container">
+        {/* Analysis Source Banner */}
+        <div className={`privacy-banner ${isGemini ? 'privacy-banner-cloud' : ''}`}>
+          <span className="shield-icon" aria-hidden="true">{isGemini ? '✨' : '🛡️'}</span>
+          <div className="privacy-banner-text">
+            <strong>{isGemini ? 'Analysed by Gemini AI' : 'Analysed Locally'}</strong>
+            <p>
+              {isGemini
+                ? 'Enhanced analysis powered by Google Gemini. Content was transmitted to Google AI.'
+                : privacyNotice || 'All processing completed on-device. No data was transmitted externally.'}
             </p>
           </div>
+          <span className={`source-badge ${isGemini ? 'source-badge-gemini' : 'source-badge-local'}`}>
+            {isGemini ? '✨ Gemini' : '🔒 Local'}
+          </span>
         </div>
-
-        {!hasContent ? (
-          <EmptyState
-            title="All caught up"
-            message="No prioritized highlights, decisions, or tasks were found in this conversation."
-          />
-        ) : (
-          <div className="priority-list">
-            {ranked.map((item, idx) => (
-              <article key={item.id} className={`priority-item priority-${item.type}`}>
-                <div className="priority-header">
-                  <span className="priority-rank">#{idx + 1}</span>
-                  <PriorityBadge type={item.type} />
-                  <span className="priority-score">Score: {item.score}</span>
-                </div>
-                <h4 className="priority-title">{item.title}</h4>
-                {item.meta?.owner && (
-                  <div className="tags-row">
-                    <span className={`badge ${item.meta.isAssignedToUser ? 'badge-owner-user' : 'badge-owner'}`}>
-                      👤 {item.meta.owner} {item.meta.isAssignedToUser ? '(You)' : ''}
-                    </span>
-                    {item.meta.deadline && item.meta.deadline !== 'No explicit deadline' && (
-                      <span className="badge badge-deadline">📅 {item.meta.deadline}</span>
-                    )}
-                  </div>
-                )}
-                {item.meta?.text && (
-                  <blockquote className="mention-quote">"{item.meta.text}"</blockquote>
-                )}
-                <div className="priority-reason">
-                  <span className="reason-label">Evidence:</span> {item.reason}
-                </div>
-              </article>
-            ))}
+        {fallbackReason && (
+          <div className="fallback-notice">
+            <span>ℹ️</span> Gemini was requested but fell back to local analysis: {fallbackReason}
           </div>
         )}
-      </section>
 
-      {/* Urgent Highlights Section */}
-      <section className={`card margin-top ${urgentHighlights.length > 0 ? 'card-urgent-border' : ''}`}>
-        <div className="card-header-clean">
-          <h3 className="section-title">
-            <span className="section-icon">🚨</span> Urgent &amp; Time-Critical Highlights ({urgentHighlights.length})
-          </h3>
+        {/* 4 Large Selectable Cards with Live Counts */}
+        <div className="cards-hub">
+          {/* Card 1: Summary */}
+          <div
+            className="hub-card hub-card-summary"
+            onClick={() => setActiveView('summary')}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && setActiveView('summary')}
+          >
+            <div className="hub-card-header">
+              <span className="hub-card-icon">📋</span>
+              <span className="hub-card-count">{totalMessages} Messages</span>
+            </div>
+            <h3 className="hub-card-title">Summary</h3>
+            <p className="hub-card-desc">
+              High-level conversation overview, key discussion themes &amp; participants.
+            </p>
+            <span className="hub-card-link">Explore Summary →</span>
+          </div>
+
+          {/* Card 2: What I Missed */}
+          <div
+            className="hub-card hub-card-missed"
+            onClick={() => setActiveView('missed')}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && setActiveView('missed')}
+          >
+            <div className="hub-card-header">
+              <span className="hub-card-icon">⚡</span>
+              <span className="hub-card-count">{missedItems.length} Highlights</span>
+            </div>
+            <h3 className="hub-card-title">What I Missed</h3>
+            <p className="hub-card-desc">
+              Direct mentions, assigned tasks, and urgent deadlines targeting {userName || 'you'}.
+            </p>
+            <span className="hub-card-link">Review Highlights →</span>
+          </div>
+
+          {/* Card 3: Tasks & Deadlines */}
+          <div
+            className="hub-card hub-card-tasks"
+            onClick={() => setActiveView('tasks')}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && setActiveView('tasks')}
+          >
+            <div className="hub-card-header">
+              <span className="hub-card-icon">✅</span>
+              <span className="hub-card-count">{actionItems.length} Tasks</span>
+            </div>
+            <h3 className="hub-card-title">Tasks &amp; Deadlines</h3>
+            <p className="hub-card-desc">
+              Assigned deliverables, target dates, and completion status.
+            </p>
+            <span className="hub-card-link">Manage Tasks →</span>
+          </div>
+
+          {/* Card 4: Decisions */}
+          <div
+            className="hub-card hub-card-decisions"
+            onClick={() => setActiveView('decisions')}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && setActiveView('decisions')}
+          >
+            <div className="hub-card-header">
+              <span className="hub-card-icon">💡</span>
+              <span className="hub-card-count">{decisions.length} Decisions</span>
+            </div>
+            <h3 className="hub-card-title">Decisions</h3>
+            <p className="hub-card-desc">
+              Explicit agreements, resolved questions, and approved architecture paths.
+            </p>
+            <span className="hub-card-link">View Decisions →</span>
+          </div>
         </div>
-        {urgentHighlights.length === 0 ? (
-          <EmptyState
-            title="No urgent blockers"
-            message="No critical blockers, ASAP requests, or imminent deadlines detected."
-          />
-        ) : (
-          <div className="urgent-grid">
-            {urgentHighlights.map((urg) => (
-              <div key={urg.id} className="urgent-card">
-                <div className="urgent-badge-row">
-                  <span className="badge badge-urgent">
-                    <span className="pulse-dot"></span> HIGH URGENCY
-                  </span>
-                  <span className="urgent-sender">From {urg.sender}</span>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2. DETAIL VIEWS (Only one renders at a time with a Back button)
+  // ---------------------------------------------------------------------------
+  return (
+    <div className="detail-view-container">
+      {/* Top Navigation Bar with Back Button */}
+      <div className="detail-top-bar">
+        <button
+          type="button"
+          className="btn-back"
+          onClick={() => setActiveView(null)}
+        >
+          ← Back to Overview
+        </button>
+        <span className="view-mode-badge">
+          Viewing: <strong>{activeView.toUpperCase()}</strong>
+        </span>
+      </div>
+
+      {/* VIEW: SUMMARY */}
+      {activeView === 'summary' && (
+        <section className="card view-panel">
+          <div className="panel-header">
+            <div>
+              <h2>📋 Executive Summary</h2>
+              <p className="subtext">
+                Overview of {totalMessages} messages across {participants.length} participants
+              </p>
+            </div>
+            <span className="badge badge-topic">FORMAT: {(format || 'TXT').toUpperCase()}</span>
+          </div>
+
+          <div className="summary-body margin-top">
+            <p className="summary-paragraph">{summary}</p>
+
+            {topics && topics.length > 0 && (
+              <div className="topics-section margin-top">
+                <span className="topics-heading">Discussion Topics:</span>
+                <div className="tags-row">
+                  {topics.map((t) => (
+                    <span key={t} className="badge badge-topic">🏷️ {t}</span>
+                  ))}
                 </div>
-                <p className="urgent-text">{urg.description}</p>
-                {urg.reason && (
-                  <span className="urgent-reason">⚠️ {urg.reason}</span>
-                )}
-                <span className="urgent-time">{urg.timestamp || 'Timestamp unavailable'}</span>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            )}
 
-      {/* Action Items: Structured Readable Task Table */}
-      <section className="card margin-top">
-        <div className="card-header-clean">
-          <h3 className="section-title">
-            <span className="section-icon">✅</span> Action Items &amp; Tasks ({actionItems.length})
-          </h3>
-          <p className="section-subtitle">
-            Extracted action items with designated owners and parsed deadlines.
-          </p>
-        </div>
-
-        {actionItems.length === 0 ? (
-          <EmptyState
-            title="No tasks assigned"
-            message="No explicit action items, todos, or task commitments found in this chat."
-          />
-        ) : (
-          <div className="table-responsive">
-            <table className="task-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '45%' }}>Task Description</th>
-                  <th style={{ width: '22%' }}>Assignee</th>
-                  <th style={{ width: '23%' }}>Deadline</th>
-                  <th style={{ width: '10%' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {actionItems.map((act) => (
-                  <tr key={act.id} className={act.isAssignedToUser ? 'row-highlighted' : ''}>
-                    <td>
-                      <div className="task-desc">
-                        <strong className="task-name">{act.task}</strong>
-                        <span className="task-sender">Requested by {act.sender}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`badge ${act.isAssignedToUser ? 'badge-owner-user' : 'badge-owner'}`}>
-                        👤 {act.owner} {act.isAssignedToUser ? '(You)' : ''}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={act.deadline !== 'No explicit deadline' ? 'badge badge-deadline' : 'text-muted'}>
-                        {act.deadline !== 'No explicit deadline' ? `📅 ${act.deadline}` : 'None specified'}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="badge badge-pending">PENDING</span>
-                    </td>
-                  </tr>
+            <div className="participants-section margin-top">
+              <span className="topics-heading">Participants ({participants.length}):</span>
+              <div className="tags-row">
+                {participants.map((p) => (
+                  <span key={p} className="badge badge-owner">👤 {p}</span>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
-      {/* Grid: Decisions and Mentions */}
-      <div className="grid grid-2 margin-top">
-        {/* Key Decisions */}
-        <section className="card">
-          <div className="card-header-clean">
-            <h3 className="section-title">
-              <span className="section-icon">💡</span> Key Decisions ({decisions.length})
-            </h3>
+      {/* VIEW: WHAT I MISSED */}
+      {activeView === 'missed' && (() => {
+        // Apply filter chips
+        let filtered = missedItems;
+        if (missedFilter === 'urgent') {
+          filtered = missedItems.filter((i) => i.isUrgent);
+        } else if (missedFilter === 'for_me') {
+          filtered = missedItems.filter((i) => i.isForUser || i.type === 'task' || i.type === 'mention');
+        }
+
+        return (
+          <section className="card view-panel">
+            <div className="panel-header">
+              <div>
+                <h2>⚡ What I Missed</h2>
+                <p className="subtext">
+                  Items involving {userName ? `"${userName}"` : 'your name'}, sorted by priority. Click any card to expand source evidence.
+                </p>
+              </div>
+              <span className="badge badge-urgent">{filtered.length} Items</span>
+            </div>
+
+            {/* Filter Chips: All / Urgent / For me */}
+            <div className="filter-chips-row margin-top">
+              <button
+                type="button"
+                className={`filter-chip ${missedFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setMissedFilter('all')}
+              >
+                All ({missedItems.length})
+              </button>
+              <button
+                type="button"
+                className={`filter-chip ${missedFilter === 'urgent' ? 'active' : ''}`}
+                onClick={() => setMissedFilter('urgent')}
+              >
+                🚨 Urgent ({missedItems.filter((i) => i.isUrgent).length})
+              </button>
+              <button
+                type="button"
+                className={`filter-chip ${missedFilter === 'for_me' ? 'active' : ''}`}
+                onClick={() => setMissedFilter('for_me')}
+              >
+                👤 For Me ({missedItems.filter((i) => i.isForUser || i.type === 'task' || i.type === 'mention').length})
+              </button>
+            </div>
+
+            {/* List of Missed Items */}
+            {filtered.length === 0 ? (
+              <div className="empty-state margin-top">
+                <span className="empty-icon">🎉</span>
+                <h4>No matching highlights</h4>
+                <p>You have no pending items matching the selected filter.</p>
+              </div>
+            ) : (
+              <div className="missed-items-list margin-top">
+                {filtered.map((item, idx) => {
+                  const isExpanded = Boolean(expandedMissedIds[item.id]);
+                  return (
+                    <div
+                      key={item.id}
+                      className={`missed-card priority-${item.type} ${isExpanded ? 'expanded' : ''}`}
+                      onClick={() => toggleMissedExpand(item.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === 'Enter' && toggleMissedExpand(item.id)}
+                    >
+                      <div className="missed-card-main">
+                        <div className="missed-card-header">
+                          <span className="missed-rank">#{idx + 1}</span>
+                          <span className={`badge badge-${item.type === 'urgent' ? 'urgent' : item.type === 'task' ? 'action' : 'mention'}`}>
+                            {item.type.toUpperCase()}
+                          </span>
+                          {item.deadline && item.deadline !== 'No explicit deadline' && (
+                            <span className="badge badge-deadline">📅 {item.deadline}</span>
+                          )}
+                          <span className="expand-indicator">
+                            {isExpanded ? '▲ Hide Details' : '▼ View Evidence'}
+                          </span>
+                        </div>
+
+                        <h4 className="missed-title">{item.title}</h4>
+
+                        <div className="missed-meta-row">
+                          <span className="missed-sender">From: {item.sender}</span>
+                          {item.timestamp && <span className="missed-time">• {item.timestamp}</span>}
+                        </div>
+                      </div>
+
+                      {/* Click-to-Expand: Evidence & Source Message */}
+                      {isExpanded && (
+                        <div className="missed-expanded-content" onClick={(e) => e.stopPropagation()}>
+                          <div className="evidence-callout">
+                            <strong>🎯 Why highlighted (Evidence):</strong>
+                            <p>{item.evidence}</p>
+                          </div>
+                          {item.sourceMessage && (
+                            <div className="source-callout">
+                              <strong>💬 Source Message:</strong>
+                              <blockquote className="source-blockquote">
+                                "{item.sourceMessage.text}"
+                              </blockquote>
+                              <span className="source-meta-text">
+                                — {item.sourceMessage.sender} {item.sourceMessage.timestamp ? `(${item.sourceMessage.timestamp})` : ''}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        );
+      })()}
+
+      {/* VIEW: TASKS & DEADLINES */}
+      {activeView === 'tasks' && (() => {
+        // Sort tasks by deadline if toggled
+        const tasksCopy = [...actionItems];
+        if (sortTasksByDeadline) {
+          tasksCopy.sort((a, b) => {
+            const aHas = a.deadline && a.deadline !== 'No explicit deadline';
+            const bHas = b.deadline && b.deadline !== 'No explicit deadline';
+            if (aHas && !bHas) return -1;
+            if (!aHas && bHas) return 1;
+            return (a.deadline || '').localeCompare(b.deadline || '');
+          });
+        }
+
+        return (
+          <section className="card view-panel">
+            <div className="panel-header">
+              <div>
+                <h2>✅ Tasks &amp; Deadlines</h2>
+                <p className="subtext">
+                  Track assigned deliverables, due dates, and mark progress locally.
+                </p>
+              </div>
+              <div className="panel-actions">
+                <button
+                  type="button"
+                  className={`btn-secondary btn-sm ${sortTasksByDeadline ? 'btn-active' : ''}`}
+                  onClick={() => setSortTasksByDeadline(!sortTasksByDeadline)}
+                >
+                  📅 {sortTasksByDeadline ? 'Sorted by Deadline' : 'Sort by Deadline'}
+                </button>
+              </div>
+            </div>
+
+            {tasksCopy.length === 0 ? (
+              <div className="empty-state margin-top">
+                <span className="empty-icon">📭</span>
+                <h4>No tasks found</h4>
+                <p>No actionable items were identified in this conversation.</p>
+              </div>
+            ) : (
+              <div className="table-responsive margin-top">
+                <table className="task-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '8%' }}>Done</th>
+                      <th style={{ width: '45%' }}>Action Item</th>
+                      <th style={{ width: '22%' }}>Assignee</th>
+                      <th style={{ width: '25%' }}>Deadline</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tasksCopy.map((act) => {
+                      const isDone = Boolean(completedTaskIds[act.id]);
+                      return (
+                        <tr
+                          key={act.id}
+                          className={`${isDone ? 'row-done' : ''} ${act.isAssignedToUser ? 'row-highlighted' : ''}`}
+                        >
+                          <td style={{ textAlign: 'center' }}>
+                            <input
+                              type="checkbox"
+                              className="task-checkbox"
+                              checked={isDone}
+                              onChange={() => toggleTaskDone(act.id)}
+                              aria-label={`Mark "${act.task}" as completed`}
+                            />
+                          </td>
+                          <td>
+                            <div className="task-desc">
+                              <span className={`task-name ${isDone ? 'task-done-text' : ''}`}>
+                                {act.task}
+                              </span>
+                              <span className="task-sender">Requested by {act.sender}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`badge ${act.isAssignedToUser ? 'badge-owner-user' : 'badge-owner'}`}>
+                              👤 {act.owner} {act.isAssignedToUser ? '(You)' : ''}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={act.deadline !== 'No explicit deadline' ? 'badge badge-deadline' : 'text-muted'}>
+                              {act.deadline !== 'No explicit deadline' ? `📅 ${act.deadline}` : 'None specified'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        );
+      })()}
+
+      {/* VIEW: DECISIONS */}
+      {activeView === 'decisions' && (
+        <section className="card view-panel">
+          <div className="panel-header">
+            <div>
+              <h2>💡 Key Decisions</h2>
+              <p className="subtext">
+                Approved agreements, architectural choices, and resolutions recorded in the log.
+              </p>
+            </div>
+            <span className="badge badge-decision">{decisions.length} Approved</span>
           </div>
+
           {decisions.length === 0 ? (
-            <EmptyState
-              title="No decisions logged"
-              message="No agreed technical or organizational decisions identified."
-            />
+            <div className="empty-state margin-top">
+              <span className="empty-icon">📭</span>
+              <h4>No explicit decisions</h4>
+              <p>No decision statements were detected in this conversation.</p>
+            </div>
           ) : (
-            <div className="decisions-list">
+            <div className="decisions-list margin-top">
               {decisions.map((dec) => (
                 <div key={dec.id} className="decision-item">
                   <div className="decision-marker">✓</div>
                   <div className="decision-content">
                     <p className="decision-text">{dec.text}</p>
                     <span className="decision-meta">
-                      By <strong>{dec.sender}</strong> {dec.timestamp ? `• ${dec.timestamp}` : ''}
+                      Agreed by <strong>{dec.sender}</strong> {dec.timestamp ? `• ${dec.timestamp}` : ''}
                     </span>
+                    {dec.sourceMessage && (
+                      <blockquote className="decision-quote">
+                        "{dec.sourceMessage.text}"
+                      </blockquote>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
           )}
         </section>
-
-        {/* Mentions */}
-        <section className="card">
-          <div className="card-header-clean">
-            <h3 className="section-title">
-              <span className="section-icon">💬</span> @Mentions ({mentions.length})
-            </h3>
-          </div>
-          {mentions.length === 0 ? (
-            <EmptyState
-              title="No direct mentions"
-              message="No @handles or direct recipient mentions identified."
-            />
-          ) : (
-            <div className="mentions-grid">
-              {mentions.map((men) => (
-                <div key={men.id} className={`mention-chip ${men.isForUser ? 'mention-user' : ''}`}>
-                  <div className="mention-chip-header">
-                    <span className="mention-name">@{men.mentionedUser}</span>
-                    {men.isForUser && <span className="badge badge-user-tag">FOR YOU</span>}
-                  </div>
-                  <p className="mention-quote">"{men.text}"</p>
-                  <span className="mention-sender">— {men.sender}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
+      )}
     </div>
   );
 }
