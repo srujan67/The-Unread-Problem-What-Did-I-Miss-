@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { analyzeChatLog } from '../api/client';
 
-export default function ChatUploader({ onAnalysisComplete }) {
+export default function ChatUploader({ onAnalysisComplete, onReset, hasAnalysis = false }) {
   const [userName, setUserName] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [rawText, setRawText] = useState('');
@@ -26,7 +26,7 @@ export default function ChatUploader({ onAnalysisComplete }) {
     }
 
     setSelectedFile(file);
-    
+
     // Read file text
     const reader = new FileReader();
     reader.onprogress = (e) => {
@@ -66,19 +66,32 @@ export default function ChatUploader({ onAnalysisComplete }) {
     setLoading(true);
     try {
       const demoData = [
-        { sender: 'Alex Chen', timestamp: '2026-10-09T09:00:00Z', text: "Good morning team! Let's align on v2 architecture." },
-        { sender: 'Jordan Miller', timestamp: '2026-10-09T09:05:00Z', text: 'Hey @Alex, we need a decision on the primary database.' },
-        { sender: 'Taylor Reed', timestamp: '2026-10-09T09:12:00Z', text: 'DECISION: We agreed to use PostgreSQL for persistence.' },
-        { sender: 'Alex Chen', timestamp: '2026-10-09T09:25:00Z', text: 'ACTION ITEM: @Jordan to complete the security audit.' },
-        { sender: 'Alex Chen', timestamp: '2026-10-09T09:35:00Z', text: 'URGENT DEADLINE: @Taylor must finalize API spec by October 15, 2026 at 5:00 PM EST.' }
+        { sender: 'Alex Chen', timestamp: '2026-10-09T09:00:00Z', text: "Good morning team! Let's align on the v2 architecture and release schedule for ProtocolX." },
+        { sender: 'Jordan Miller', timestamp: '2026-10-09T09:05:00Z', text: 'Hey @Alex, I reviewed the backend performance metrics from yesterday. We need a decision on the primary database.' },
+        { sender: 'Taylor Reed', timestamp: '2026-10-09T09:12:00Z', text: 'DECISION: We agreed to use PostgreSQL for structured persistence and Cloud Storage for export logs.' },
+        { sender: 'Sam Rivera', timestamp: '2026-10-09T09:20:00Z', text: 'Sounds solid! What are our main deliverables before the upcoming release?' },
+        { sender: 'Alex Chen', timestamp: '2026-10-09T09:25:00Z', text: 'ACTION ITEM: @Jordan to complete the security audit and implementation of JWT authentication.' },
+        { sender: 'Jordan Miller', timestamp: '2026-10-09T09:28:00Z', text: 'Got it! I will start working on the JWT authentication middleware right away.' },
+        { sender: 'Alex Chen', timestamp: '2026-10-09T09:35:00Z', text: 'URGENT DEADLINE: @Taylor must finalize the updated API specification by October 15, 2026 at 5:00 PM EST.' },
+        { sender: 'Taylor Reed', timestamp: '2026-10-09T09:40:00Z', text: 'Understood @Alex! I will submit the docs PR by October 15th noon.' }
       ];
       setRawText(JSON.stringify(demoData, null, 2));
       setSelectedFile({ name: 'demoChat.json' });
+      if (!userName) setUserName('Jordan');
       setLoading(false);
     } catch (err) {
       setError('Failed to load demo dataset.');
       setLoading(false);
     }
+  };
+
+  const handleClear = () => {
+    setSelectedFile(null);
+    setRawText('');
+    setError('');
+    setProgress(0);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (onReset) onReset();
   };
 
   const handleSubmit = async (e) => {
@@ -111,15 +124,37 @@ export default function ChatUploader({ onAnalysisComplete }) {
   return (
     <div className="card uploader-card">
       <div className="card-header">
-        <h2>Ingest Chat Conversation</h2>
-        <button type="button" className="btn-secondary btn-sm" onClick={handleLoadDemo} disabled={loading}>
-          Load Sample Dataset
-        </button>
+        <div>
+          <h2>Ingest Conversation</h2>
+          <p className="card-subtitle">Upload WhatsApp, Slack CSV, or JSON chat exports for offline analysis</p>
+        </div>
+        <div className="card-actions">
+          <button
+            type="button"
+            className="btn-secondary btn-sm"
+            onClick={handleLoadDemo}
+            disabled={loading}
+          >
+            Load Sample Dataset
+          </button>
+          {(selectedFile || rawText) && (
+            <button
+              type="button"
+              className="btn-outline btn-sm"
+              onClick={handleClear}
+              disabled={loading}
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="userNameInput">Your Name (Optional for personalized highlights & @mentions)</label>
+          <label htmlFor="userNameInput">
+            Your Name / Handle <span className="label-subtext">(Optional — personalizes @mentions &amp; priority tasks)</span>
+          </label>
           <input
             id="userNameInput"
             type="text"
@@ -136,6 +171,9 @@ export default function ChatUploader({ onAnalysisComplete }) {
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onClick={() => fileInputRef.current?.click()}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
         >
           <input
             type="file"
@@ -146,16 +184,20 @@ export default function ChatUploader({ onAnalysisComplete }) {
           />
 
           <div className="drop-zone-content">
-            <span className="drop-icon">📁</span>
+            <span className="drop-icon">{selectedFile ? '📄' : '📤'}</span>
             {selectedFile ? (
               <div className="selected-file-info">
-                <strong>Selected File: {selectedFile.name}</strong>
-                <p className="subtext">Click or drag another file to replace (.txt, .csv, .json)</p>
+                <strong>Selected File: <span className="file-name">{selectedFile.name}</span></strong>
+                <p className="subtext">Click or drag a new file to replace (.txt, .csv, .json)</p>
               </div>
             ) : (
               <div>
-                <p className="drop-text">Drag & drop your chat export (.txt, .csv, .json) or <span>click to browse</span></p>
-                <p className="subtext">Supports WhatsApp (iOS & Android), Slack CSV, and JSON exports</p>
+                <p className="drop-text">
+                  Drag &amp; drop chat export (.txt, .csv, .json) or <span className="browse-link">browse files</span>
+                </p>
+                <p className="subtext">
+                  Supports WhatsApp (iOS &amp; Android), Slack CSV, and custom JSON formats
+                </p>
               </div>
             )}
           </div>
@@ -169,12 +211,14 @@ export default function ChatUploader({ onAnalysisComplete }) {
         )}
 
         <div className="form-group margin-top">
-          <label htmlFor="chatTextInput">Or Paste Chat Log directly</label>
+          <label htmlFor="chatTextInput">
+            Or Paste Chat Log directly
+          </label>
           <textarea
             id="chatTextInput"
             className="form-textarea"
-            rows={5}
-            placeholder="[24/09/24, 10:15:30 AM] Alice: Hey @Bob..."
+            rows={4}
+            placeholder="[24/09/24, 10:15:30 AM] Alice: Hey @Bob, review the API specification before Friday..."
             value={rawText}
             onChange={(e) => {
               setRawText(e.target.value);
@@ -184,14 +228,21 @@ export default function ChatUploader({ onAnalysisComplete }) {
         </div>
 
         {error && (
-          <div className="alert alert-error">
-            ⚠️ {error}
+          <div className="alert alert-error" role="alert">
+            <span className="alert-icon">⚠️</span>
+            <span>{error}</span>
           </div>
         )}
 
         <div className="form-actions">
           <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? 'Analyzing Chat...' : 'Analyze Conversation'}
+            {loading ? (
+              <span className="btn-loading">
+                <span className="spinner"></span> Analyzing Conversation...
+              </span>
+            ) : (
+              '⚡ Analyze Conversation'
+            )}
           </button>
         </div>
       </form>

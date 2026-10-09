@@ -12,22 +12,38 @@ export default function App() {
     setAnalysis(result);
   };
 
+  const handleReset = () => {
+    setAnalysis(null);
+    setAnalysisError('');
+  };
+
   return (
     <div className="app-container">
       <header className="app-header">
+        <div className="app-badge">Productivity &amp; Context Intelligence</div>
         <h1 className="app-title">What Did I Miss?</h1>
         <p className="app-subtitle">
-          AI-Powered Local Chat Ingestion, Summaries, Action Items &amp; Urgent Highlights
+          Local conversation ingestion, topic summaries, action item tracking &amp; priority feeds
         </p>
         <PrivacyIndicator />
       </header>
 
-      <main>
-        <ChatUploader onAnalysisComplete={handleAnalysisComplete} />
-        <div className="margin-top">
-          <AnalysisDashboard analysis={analysis} error={analysisError} />
-        </div>
+      <main className="app-main">
+        <ChatUploader
+          onAnalysisComplete={handleAnalysisComplete}
+          onReset={handleReset}
+          hasAnalysis={Boolean(analysis)}
+        />
+        {analysis && (
+          <div className="dashboard-wrapper">
+            <AnalysisDashboard analysis={analysis} error={analysisError} onReset={handleReset} />
+          </div>
+        )}
       </main>
+
+      <footer className="app-footer">
+        <p>ProtocolX • Private, Offline-First Chat Intelligence</p>
+      </footer>
     </div>
   );
 }

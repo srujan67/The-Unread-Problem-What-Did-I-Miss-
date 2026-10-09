@@ -26,6 +26,7 @@ Use this file to record prompts and AI interactions during development.
 - Improve deterministic extraction in backend/src/services/localAnalysis.js: topic-based summary, evidence-backed decisions, tasks, dates, direct mentions, urgency, source message references, uncertain fields, and sensible empty results for irrelevant conversations. Detect user-assigned tasks and direct mentions with userName.
 - Implement a privacy-status component in frontend/src/components/PrivacyIndicator.jsx and integrate it into frontend/src/App.jsx showing 'Processed locally — no data leaves your device'.
 - Validate the complete app using the test setup and docs/api.md. Verify chatParser and localAnalysis tests, API routes, upload-to-dashboard flow, malformed uploads, and empty conversations.
+- Polish the existing UI in frontend/src/App.jsx, frontend/src/components/ChatUploader.jsx, frontend/src/components/AnalysisDashboard.jsx, and frontend/src/components/PrivacyIndicator.jsx. Create a responsive productivity dashboard with clear visual hierarchy, readable task tables, and distinct urgency indicators.
 
 
 
