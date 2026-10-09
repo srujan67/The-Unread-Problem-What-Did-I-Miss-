@@ -1,0 +1,42 @@
+[
+  {
+    "sender": "Alex Chen",
+    "timestamp": "2026-10-09T09:00:00Z",
+    "text": "Good morning team! Let's align on the v2 architecture and release schedule for ProtocolX."
+  },
+  {
+    "sender": "Jordan Miller",
+    "timestamp": "2026-10-09T09:05:00Z",
+    "text": "Hey @Alex, I reviewed the backend performance metrics from yesterday. We need a decision on the primary database."
+  },
+  {
+    "sender": "Taylor Reed",
+    "timestamp": "2026-10-09T09:12:00Z",
+    "text": "DECISION: We agreed to use PostgreSQL for structured persistence and Cloud Storage for export logs."
+  },
+  {
+    "sender": "Sam Rivera",
+    "timestamp": "2026-10-09T09:20:00Z",
+    "text": "Sounds solid! What are our main deliverables before the upcoming release?"
+  },
+  {
+    "sender": "Alex Chen",
+    "timestamp": "2026-10-09T09:25:00Z",
+    "text": "ACTION ITEM: @Jordan to complete the security audit and implementation of JWT authentication."
+  },
+  {
+    "sender": "Jordan Miller",
+    "timestamp": "2026-10-09T09:28:00Z",
+    "text": "Got it! I will start working on the JWT authentication middleware right away."
+  },
+  {
+    "sender": "Alex Chen",
+    "timestamp": "2026-10-09T09:35:00Z",
+    "text": "URGENT DEADLINE: @Taylor must finalize the updated API specification by October 15, 2026 at 5:00 PM EST."
+  },
+  {
+    "sender": "Taylor Reed",
+    "timestamp": "2026-10-09T09:40:00Z",
+    "text": "Understood @Alex! I will submit the docs PR by October 15th noon."
+  }
+]

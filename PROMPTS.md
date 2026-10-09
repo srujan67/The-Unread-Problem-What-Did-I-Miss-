@@ -18,5 +18,9 @@ Use this file to record prompts and AI interactions during development.
 
 - You are working inside an existing starter template. Do NOT scaffold a new project.
 - Inspect the existing codebase, especially AGENTS.md, docs/api.md, frontend/, and backend/. Identify the current entry points, dependencies, API contract, and missing pieces for "What Did I Miss?".
+- Implement chat-log parsing in backend/src/services/chatParser.js and its tests in backend/src/services/chatParser.test.js. Support WhatsApp .txt (iOS/Android multi-line), CSV, and JSON exports; normalise sender, timestamp, message text, and @mentions. Handle malformed files without crashing.
+- Create a synthetic conversation fixture in backend/src/fixtures/demoChat.json containing multiple senders, a direct @mention, an explicit decision, an assigned task, and a dated deadline.
+
+
 
 
