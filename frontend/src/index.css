@@ -36,6 +36,42 @@ body {
   font-size: 1.05rem;
 }
 
+.privacy-indicator {
+  display: inline-flex;
+  justify-content: center;
+  margin-top: 0.85rem;
+}
+
+.privacy-indicator-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.85rem;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 9999px;
+  color: #6ee7b7;
+  font-size: 0.85rem;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
+}
+
+.privacy-indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.privacy-indicator-icon {
+  font-size: 0.85rem;
+}
+
+.privacy-indicator-text {
+  letter-spacing: 0.01em;
+}
+
 .card {
   background: rgba(30, 41, 59, 0.7);
   backdrop-filter: blur(12px);

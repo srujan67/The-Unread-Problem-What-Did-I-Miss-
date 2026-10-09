@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ChatUploader from './components/ChatUploader';
 import AnalysisDashboard from './components/AnalysisDashboard';
+import PrivacyIndicator from './components/PrivacyIndicator';
 
 export default function App() {
   const [analysis, setAnalysis] = useState(null);
@@ -18,6 +19,7 @@ export default function App() {
         <p className="app-subtitle">
           AI-Powered Local Chat Ingestion, Summaries, Action Items &amp; Urgent Highlights
         </p>
+        <PrivacyIndicator />
       </header>
 
       <main>

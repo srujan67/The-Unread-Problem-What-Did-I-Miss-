@@ -24,6 +24,7 @@ Use this file to record prompts and AI interactions during development.
 - Implement the chat-ingestion interface in frontend/src/components/ChatUploader.jsx and integrate it into frontend/src/App.jsx with a 'Your name' text field sent as userName.
 - Implement the results dashboard in frontend/src/components/AnalysisDashboard.jsx with ranked priority feed, evidence-based reasons, and empty/error states. Integrate into App.jsx.
 - Improve deterministic extraction in backend/src/services/localAnalysis.js: topic-based summary, evidence-backed decisions, tasks, dates, direct mentions, urgency, source message references, uncertain fields, and sensible empty results for irrelevant conversations. Detect user-assigned tasks and direct mentions with userName.
+- Implement a privacy-status component in frontend/src/components/PrivacyIndicator.jsx and integrate it into frontend/src/App.jsx showing 'Processed locally — no data leaves your device'.
 
 
 
