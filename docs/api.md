@@ -77,3 +77,24 @@ This document outlines the API endpoints and contracts for ProtocolX.
   }
   ```
 
+- **Endpoint**: `GET /api/analyze/latest`
+- **Description**: Retrieves the most recent conversation analysis result from in-memory cache.
+- **Response**:
+  - `200 OK`
+  ```json
+  {
+    "success": true,
+    "id": "analysis-1791536655919",
+    "timestamp": "2026-10-09T09:04:15.919Z",
+    "analysis": { ... }
+  }
+  ```
+  - `404 Not Found`
+  ```json
+  {
+    "success": false,
+    "error": "No conversation analysis found in memory."
+  }
+  ```
+
+

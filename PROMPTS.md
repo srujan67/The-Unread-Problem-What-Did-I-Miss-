@@ -25,6 +25,7 @@ Use this file to record prompts and AI interactions during development.
 - Implement the results dashboard in frontend/src/components/AnalysisDashboard.jsx with ranked priority feed, evidence-based reasons, and empty/error states. Integrate into App.jsx.
 - Improve deterministic extraction in backend/src/services/localAnalysis.js: topic-based summary, evidence-backed decisions, tasks, dates, direct mentions, urgency, source message references, uncertain fields, and sensible empty results for irrelevant conversations. Detect user-assigned tasks and direct mentions with userName.
 - Implement a privacy-status component in frontend/src/components/PrivacyIndicator.jsx and integrate it into frontend/src/App.jsx showing 'Processed locally — no data leaves your device'.
+- Validate the complete app using the test setup and docs/api.md. Verify chatParser and localAnalysis tests, API routes, upload-to-dashboard flow, malformed uploads, and empty conversations.
 
 
 
