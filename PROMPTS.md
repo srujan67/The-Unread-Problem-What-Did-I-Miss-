@@ -15,3 +15,6 @@ Use this file to record prompts and AI interactions during development.
 ## Log Entries
 
 *(Add new entries above this section or append chronologically)*
+
+- You are working inside an existing starter template. Do NOT scaffold a new project.
+
